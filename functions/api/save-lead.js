@@ -78,9 +78,11 @@ export async function onRequestPost(context) {
                     expirationTtl: 600
                 });
                 
-                // Generate link
+                // Generate link using request origin or host header
                 const url = new URL(context.request.url);
-                pdfLink = `${url.origin}/pdf/${validation.data.quote_id}`;
+                const host = context.request.headers.get('host') || url.host;
+                const protocol = context.request.headers.get('x-forwarded-proto') || (url.protocol.replace(':', ''));
+                pdfLink = `${protocol}://${host}/pdf/${validation.data.quote_id}`;
             } catch (kvErr) {
                 console.error("KV Storage Error:", kvErr);
             }
@@ -120,25 +122,30 @@ export async function onRequestPost(context) {
 
         // --- WHATSAPP NOTIFICATION (CALLMEBOT) ---
         try {
-            const totalFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(validation.data.monto_total);
+            // Robust currency formatting: RD$ 1,234.56
+            const totalFmt = "RD$ " + validation.data.monto_total.toLocaleString('en-US', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            });
             
             let msg = `🚀 *NUEVA COTIZACIÓN VERTEX*\n\n`;
             
+            // PRIORITY: PDF LINK
             if (pdfLink) {
-                msg += `📄 *Descargar PDF (Expira en 10 min):*\n${pdfLink}\n\n`;
+                msg += `📄 *DESCARGAR PDF (Temporal 10 min):*\n${pdfLink}\n\n`;
             } else {
-                msg += `⚠️ *PDF no disponible (Error en generación)*\n\n`;
+                msg += `⚠️ *PDF NO DISPONIBLE (Error en generación)*\n\n`;
             }
 
             msg += 
+                `💰 *TOTAL:* *${totalFmt}*\n` +
                 `🆔 *ID:* \`${validation.data.quote_id}\`\n` +
-                `👤 *Cliente:* ${validation.data["Responsable de Obra"]}\n` +
-                `🏢 *Empresa:* ${validation.data["Razón Social / Constructora"]}\n` +
-                `💰 *Total:* *${totalFmt}*\n\n` +
-                `🛠️ *Equipos:* \n${validation.data["Equipos Cotizados"]}\n` +
-                `📅 *Inicio:* ${validation.data["Fecha de Inicio"]}\n` +
-                `📍 *Lugar:* ${validation.data["Ubicación / Proyecto"]}\n\n` +
-                `🔗 *Ver en Airtable:* \nhttps://airtable.com/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}/${recordId}`;
+                `👤 *CLIENTE:* ${validation.data["Responsable de Obra"]}\n` +
+                `🏢 *EMPRESA:* ${validation.data["Razón Social / Constructora"]}\n\n` +
+                `🛠️ *EQUIPOS:* \n${validation.data["Equipos Cotizados"]}\n` +
+                `📅 *INICIO:* ${validation.data["Fecha de Inicio"]}\n` +
+                `📍 *LUGAR:* ${validation.data["Ubicación / Proyecto"]}\n\n` +
+                `🔗 *VER EN AIRTABLE:* \nhttps://airtable.com/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}/${recordId}`;
 
             const waUrl = `https://api.callmebot.com/whatsapp.php?phone=${CALLMEBOT_PHONE}&text=${encodeURIComponent(msg)}&apikey=${CALLMEBOT_API_KEY}`;
             
