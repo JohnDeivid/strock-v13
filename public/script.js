@@ -510,17 +510,30 @@ async function aprobarCotizacion() {
   let pdfBase64 = "";
   try {
     const element = document.getElementById('step-2');
-    // Configuramos html2pdf para que capture solo el contenido relevante
+    // Forzamos visibilidad de elementos que podrían estar ocultos por lazy loading
+    window.scrollTo(0,0);
+    
     const opt = {
       margin:       [10, 10],
       filename:     `cotizacion-${window.current_quote_id || 'v'}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        letterRendering: true
+      },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
-    // Generar PDF y obtener string base64
-    pdfBase64 = await html2pdf().set(opt).from(element).output('datauristring');
+    // Generar PDF y obtener string base64 con el orden correcto de métodos
+    pdfBase64 = await html2pdf().from(element).set(opt).output('datauristring');
+    
+    if (!pdfBase64 || pdfBase64 === "data:,") {
+       console.warn("PDF vacio generado, reintentando una vez...");
+       pdfBase64 = await html2pdf().from(element).set(opt).output('datauristring');
+    }
+    
   } catch (pdfErr) {
     console.error("Error capturando PDF:", pdfErr);
   }

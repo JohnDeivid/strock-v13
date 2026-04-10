@@ -134,7 +134,11 @@ export async function onRequestPost(context) {
             if (pdfLink) {
                 msg += `📄 *DESCARGAR PDF (Temporal 10 min):*\n${pdfLink}\n\n`;
             } else {
-                msg += `⚠️ *PDF NO DISPONIBLE (Error en generación)*\n\n`;
+                let reason = "Error desconocido";
+                if (!pdfBase64) reason = "El navegador no envió el archivo (Base64 vacío)";
+                else if (!PDF_STORE) reason = "PDF_STORE (KV) no vinculado en Cloudflare";
+                else reason = "Fallo al escribir en KV (Check logs)";
+                msg += `⚠️ *PDF NO DISPONIBLE:* \n_${reason}_\n\n`;
             }
 
             msg += 
