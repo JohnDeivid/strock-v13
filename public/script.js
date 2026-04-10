@@ -520,7 +520,7 @@ async function aprobarCotizacion() {
     };
     
     // Generar PDF y obtener string base64
-    pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
+    pdfBase64 = await html2pdf().set(opt).from(element).output('datauristring');
   } catch (pdfErr) {
     console.error("Error capturando PDF:", pdfErr);
   }

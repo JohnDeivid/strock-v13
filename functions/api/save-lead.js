@@ -121,21 +121,24 @@ export async function onRequestPost(context) {
         // --- WHATSAPP NOTIFICATION (CALLMEBOT) ---
         try {
             const totalFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(validation.data.monto_total);
-            let msg = 
-                `🚀 *NUEVA COTIZACIÓN VERTEX*\n\n` +
+            
+            let msg = `🚀 *NUEVA COTIZACIÓN VERTEX*\n\n`;
+            
+            if (pdfLink) {
+                msg += `📄 *Descargar PDF (Expira en 10 min):*\n${pdfLink}\n\n`;
+            } else {
+                msg += `⚠️ *PDF no disponible (Error en generación)*\n\n`;
+            }
+
+            msg += 
                 `🆔 *ID:* \`${validation.data.quote_id}\`\n` +
                 `👤 *Cliente:* ${validation.data["Responsable de Obra"]}\n` +
                 `🏢 *Empresa:* ${validation.data["Razón Social / Constructora"]}\n` +
                 `💰 *Total:* *${totalFmt}*\n\n` +
                 `🛠️ *Equipos:* \n${validation.data["Equipos Cotizados"]}\n` +
                 `📅 *Inicio:* ${validation.data["Fecha de Inicio"]}\n` +
-                `📍 *Lugar:* ${validation.data["Ubicación / Proyecto"]}\n\n`;
-            
-            if (pdfLink) {
-                msg += `📄 *PDF Temporal (10 min):* \n${pdfLink}\n\n`;
-            }
-
-            msg += `🔗 *Ver en Airtable:* \nhttps://airtable.com/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}/${recordId}`;
+                `📍 *Lugar:* ${validation.data["Ubicación / Proyecto"]}\n\n` +
+                `🔗 *Ver en Airtable:* \nhttps://airtable.com/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}/${recordId}`;
 
             const waUrl = `https://api.callmebot.com/whatsapp.php?phone=${CALLMEBOT_PHONE}&text=${encodeURIComponent(msg)}&apikey=${CALLMEBOT_API_KEY}`;
             
