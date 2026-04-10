@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizador Maquinaria - Expert Edition</title>
+  <meta name="description"
+    content="Cotizador profesional de renta de maquinaria pesada. Genera cotizaciones formales con cálculo automático de ITBIS, operador, logística y seguro.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <!-- PDF Generation Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body class="min-h-screen p-0 md:p-6 flex flex-col items-center">
+
+  <div class="w-full h-auto flex flex-col relative bg-transparent">
+
+    <!-- LOADING -->
+    <div id="loading-screen" class="loading-overlay">
+      <div class="spinner mb-4"></div>
+      <p class="text-app-textMuted text-xs font-black uppercase tracking-widest">Sincronizando flota...</p>
+      <p id="loading-error" class="text-red-500 text-[10px] mt-2 hidden text-center px-4">Error de conexión con la nube.
+        Revisa los tokens de acceso.</p>
+    </div>
+
+    <!-- HEADER WEB (Oculto visualmente) -->
+    <div
+      class="hidden no-print bg-app-black p-4 border-b-2 border-app-neon flex items-center justify-between z-20 transition-colors duration-300">
+      <div class="flex items-center gap-2 text-app-white font-black uppercase tracking-widest text-lg">
+        <i data-lucide="hard-hat" class="w-6 h-6 text-app-neon"></i>
+        <span>logo<span class="text-app-neon">Rent</span></span>
+      </div>
+      <div class="flex items-center gap-3 md:gap-4">
+        <span
+          class="text-[10px] md:text-xs text-app-textMuted font-bold uppercase tracking-wider border border-app-border px-2 py-1 rounded-sm">B2B
+          Expert DR</span>
+      </div>
+    </div>
+
+    <!-- HEADER MARCA (Web e Impresión) -->
+    <div
+      class="w-full p-4 md:p-6 border-b border-app-border print:border-black print:border-b-2 flex items-center justify-between mb-2 md:mb-6 transition-colors duration-300">
+      <div class="flex items-center gap-3 font-black uppercase tracking-widest text-sm md:text-base text-app-textMain">
+        <span>Tu marca <span class="text-app-textMuted print:text-gray-500 font-medium">Corporativo</span></span>
+        <button id="btn-theme" class="no-print text-app-textMuted hover:text-app-neon transition-colors p-1"
+          title="Cambiar tema">
+          <i data-lucide="moon" id="icon-theme" class="w-4 h-4 md:w-5 md:h-5"></i>
+        </button>
+      </div>
+      <div class="text-right text-app-textMain">
+        <p class="font-bold text-[10px] md:text-xs uppercase print:text-black">Cotización Formal de Servicios</p>
+        <p class="text-[10px] md:text-xs text-app-textMuted print:text-black" id="print-date"></p>
+        <p class="text-[10px] font-black text-app-neon print:text-black hidden" id="display-quote-id"></p>
+      </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="p-4 md:p-6 relative flex-1 pb-32 md:pb-6">
+
+      <!-- ================= PASO 1 ================= -->
+      <div id="step-1" class="space-y-6 fade-in block">
+
+        <div>
+          <h2 class="text-xs font-black text-app-textMain mb-3 flex items-center gap-1.5 uppercase tracking-widest">
+            <i data-lucide="calendar-clock" class="w-4 h-4 text-app-neon"></i> Fechas del Proyecto (Globales)
+          </h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+            <div class="col-span-1 md:col-span-1">
+              <label class="block text-[10px] font-bold text-app-textMuted mb-1.5 uppercase">Inicio de Proyecto</label>
+              <input type="date" id="input-fecha-inicio"
+                class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-app-textMain text-xs font-bold transition-colors cursor-pointer" />
+            </div>
+            <div class="col-span-1 md:col-span-1">
+              <label class="block text-[10px] font-bold text-app-textMuted mb-1.5 uppercase">Fin de Proyecto</label>
+              <input type="date" id="input-fecha-fin"
+                class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-app-textMain text-xs font-bold transition-colors cursor-pointer" />
+            </div>
+
+            <div class="col-span-2 md:col-span-2 flex flex-col justify-end">
+              <button onclick="sincronizarFechas()"
+                class="w-full bg-app-surface2 border border-app-border text-app-textMain hover:border-app-neon hover:text-app-neon font-bold text-[10px] uppercase tracking-wider p-2.5 rounded-sm transition-colors flex items-center justify-center gap-2">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Sincronizar al carrito
+              </button>
+            </div>
+
+            <div
+              class="col-span-2 md:col-span-2 flex items-center bg-app-surface2 border border-app-border rounded-sm px-3 py-1">
+              <div class="flex items-center justify-between w-full">
+                <div>
+                  <label class="block text-[10px] font-bold text-app-textMain uppercase">¿Laboran Domingos?</label>
+                  <span class="text-[9px] text-app-textMuted">Resta domingos del cobro</span>
+                </div>
+                <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                  <input type="checkbox" id="toggle-domingos"
+                    class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-all border-app-surface2" />
+                  <label for="toggle-domingos"
+                    class="toggle-label block overflow-hidden h-5 rounded-full bg-app-surface2 cursor-pointer transition-colors border border-app-border"></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-2">
+              <label class="block text-[10px] font-bold text-app-textMuted mb-0.5 uppercase">Régimen de Turnos
+                (Uso)</label>
+              <p class="text-[8px] text-app-textMuted mb-1.5 leading-tight">Horómetro a descontar por día laborable.</p>
+              <div class="relative">
+                <select id="select-turnos"
+                  class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none appearance-none font-bold text-app-textMain text-xs transition-colors cursor-pointer">
+                  <option value="8">1 Turno (8 Hrs / Día)</option>
+                  <option value="16">2 Turnos (16 Hrs / Día)</option>
+                  <option value="24">Continuo (24 Hrs / Día)</option>
+                </select>
+                <i data-lucide="chevron-down"
+                  class="absolute right-3 top-2.5 text-app-textMuted w-4 h-4 pointer-events-none"></i>
+              </div>
+            </div>
+
+            <div class="col-span-2">
+              <label class="block text-[10px] font-bold text-app-textMuted mb-1.5 uppercase mt-1 md:mt-0">Suministro de
+                Diésel</label>
+              <div class="relative">
+                <select id="select-combustible"
+                  class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none appearance-none font-bold text-app-textMain text-xs transition-colors cursor-pointer">
+                  <option value="dry" data-pct="0">Máquina Seca (Cliente suministra)</option>
+                  <option value="wet" data-pct="0.35">Máquina Húmeda (+35% Estimado)</option>
+                </select>
+                <i data-lucide="chevron-down"
+                  class="absolute right-3 top-2.5 text-app-textMuted w-4 h-4 pointer-events-none"></i>
+              </div>
+            </div>
+
+            <div class="col-span-2 md:col-span-2">
+              <label class="block text-[10px] font-bold text-app-textMuted mb-1.5 uppercase mt-1 md:mt-0">Zona
+                Logística</label>
+              <div class="relative">
+                <select id="select-zona"
+                  class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none appearance-none font-bold text-app-textMain text-xs transition-colors cursor-pointer">
+                  <option value="urbana" data-precio="150">Zona Urbana (Lowboy Local $150)</option>
+                  <option value="periferia" data-precio="300">Periferia (Cama Baja $300)</option>
+                  <option value="foranea" data-precio="500">Foránea ($500+ Viáticos op.)</option>
+                </select>
+                <i data-lucide="chevron-down"
+                  class="absolute right-3 top-2.5 text-app-textMuted w-4 h-4 pointer-events-none"></i>
+              </div>
+            </div>
+
+            <div class="col-span-2 md:col-span-2">
+              <label class="block text-[10px] font-bold text-app-textMuted mb-1.5 uppercase mt-1 md:mt-0">Modalidad de
+                Operador</label>
+              <div class="relative">
+                <select id="select-operador"
+                  class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none appearance-none font-bold text-app-textMain text-xs transition-colors cursor-pointer">
+                  <option value="no" data-precio="0">A todo costo (Solo Máquina)</option>
+                  <option value="si" data-precio="60">Incluir Operador (+$60/Turno de 8h)</option>
+                </select>
+                <i data-lucide="chevron-down"
+                  class="absolute right-3 top-2.5 text-app-textMuted w-4 h-4 pointer-events-none"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2 flex flex-col gap-2">
+            <div id="alerta-dias"
+              class="text-[10px] font-bold text-app-neon uppercase tracking-wider hidden flex items-center gap-1">
+              <i data-lucide="info" class="w-3 h-3"></i> <span id="texto-dias"></span>
+            </div>
+
+            <div id="alerta-mantenimiento"
+              class="hidden bg-blue-500/10 border border-blue-500/20 p-2 rounded-sm flex items-start gap-2 fade-in">
+              <i data-lucide="wrench" class="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5"></i>
+              <p class="text-[10px] font-bold text-blue-500 leading-tight">MANTENIMIENTO: Uso supera 250 hrs. Se
+                agendarán paros preventivos en obra sin costo.</p>
+            </div>
+
+            <div id="alerta-descuento"
+              class="hidden bg-green-500/10 border border-green-500/20 p-2 rounded-sm flex items-start gap-2 fade-in">
+              <i data-lucide="tag" class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5"></i>
+              <p id="texto-descuento" class="text-[10px] font-bold text-green-500 leading-tight"></p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-xs font-black text-app-textMain mb-3 flex items-center gap-1.5 uppercase tracking-widest">
+            <i data-lucide="layers" class="w-4 h-4 text-app-neon"></i> Flota Disponible
+          </h2>
+          <div class="grid grid-cols-3 gap-2 md:gap-4">
+            <button onclick="abrirModal('Equipo Pesado')"
+              class="flex flex-col items-center justify-center gap-2 p-4 bg-app-surface2 border border-app-border rounded-sm hover:border-app-neon hover:bg-app-black transition-all text-app-textMuted hover:text-app-neon group relative overflow-hidden">
+              <i data-lucide="crane" class="w-7 h-7 transition-transform group-hover:scale-110 relative z-10"></i>
+              <span
+                class="font-black text-[10px] md:text-xs text-center uppercase tracking-widest relative z-10 text-app-white">Pesado</span>
+            </button>
+            <button onclick="abrirModal('Equipo Ligero')"
+              class="flex flex-col items-center justify-center gap-2 p-4 bg-app-surface2 border border-app-border rounded-sm hover:border-app-neon hover:bg-app-black transition-all text-app-textMuted hover:text-app-neon group relative overflow-hidden">
+              <i data-lucide="tractor" class="w-7 h-7 transition-transform group-hover:scale-110 relative z-10"></i>
+              <span
+                class="font-black text-[10px] md:text-xs text-center uppercase tracking-widest relative z-10 text-app-white">Ligero</span>
+            </button>
+            <button onclick="abrirModal('Accesorios')"
+              class="flex flex-col items-center justify-center gap-2 p-4 bg-app-surface2 border border-app-border rounded-sm hover:border-app-neon hover:bg-app-black transition-all text-app-textMuted hover:text-app-neon group relative overflow-hidden">
+              <i data-lucide="drill" class="w-7 h-7 transition-transform group-hover:scale-110 relative z-10"></i>
+              <span
+                class="font-black text-[10px] md:text-xs text-center uppercase tracking-widest relative z-10 text-app-white">Aditamentos</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-3 border-b border-app-border pb-2">
+            <h2 class="text-xs font-black text-app-textMain flex items-center gap-1.5 uppercase tracking-widest">
+              <i data-lucide="clipboard-check" class="w-4 h-4 text-app-neon"></i> Manifiesto de Equipos
+            </h2>
+            <span id="cart-badge"
+              class="bg-app-surface2 border border-app-border text-app-textMain text-[10px] font-bold px-2 py-0.5 rounded-sm tracking-wider transition-colors">0
+              ITEMS</span>
+          </div>
+
+          <div
+            class="bg-app-black/50 border border-app-border rounded-sm overflow-hidden p-2 min-h-[120px] transition-colors">
+            <div id="cart-empty"
+              class="p-6 text-center text-app-textMuted flex flex-col items-center h-full justify-center">
+              <i data-lucide="layout-grid" class="w-8 h-8 mb-2 opacity-20"></i>
+              <p class="text-[10px] font-bold uppercase tracking-widest">Sin equipos asignados</p>
+            </div>
+            <div id="cart-list" class="flex flex-col gap-2"></div>
+          </div>
+
+          <div id="alerta-dependencias"
+            class="hidden mt-2 bg-red-500/10 border border-red-500/20 p-2 rounded-sm flex items-start gap-2 fade-in">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5"></i>
+            <p id="texto-alerta-dependencias" class="text-[10px] font-bold text-red-500 leading-tight"></p>
+          </div>
+
+          <div id="alerta-desgaste"
+            class="hidden mt-2 bg-orange-500/10 border border-orange-500/20 p-2 rounded-sm flex items-start gap-2 fade-in">
+            <i data-lucide="hammer" class="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5"></i>
+            <p class="text-[10px] font-bold text-orange-500 leading-tight">AVISO: Cargo por desgaste de pica aplicable
+              al finalizar el contrato (Martillo Hidráulico).</p>
+          </div>
+
+        </div>
+
+        <div
+          class="bg-app-surface2 border border-app-border p-3 md:p-4 rounded-sm flex items-start md:items-center justify-between gap-4 transition-colors">
+          <div>
+            <h3 class="text-xs font-black text-app-white uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+              <i data-lucide="shield-check" class="w-4 h-4 text-green-500"></i> Seguro RC y Daños en Obra
+            </h3>
+            <p class="text-[10px] text-app-textMuted leading-tight max-w-sm">Cubre volcaduras y daños estructurales
+              (Deducible 10%). Añade 8% al subtotal de renta pura. Obligatorio sin póliza propia.</p>
+          </div>
+          <div
+            class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in mt-1 md:mt-0">
+            <input type="checkbox" name="toggle" id="toggle-seguro"
+              class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-all border-app-surface2"
+              checked />
+            <label for="toggle-seguro"
+              class="toggle-label block overflow-hidden h-6 rounded-full bg-app-surface2 cursor-pointer transition-colors border border-app-border"></label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= PASO 2 ================= -->
+      <div id="step-2" class="space-y-5 fade-in hidden print-border p-0 md:p-0 print:p-4">
+
+        <button onclick="cambiarPaso(1)" data-html2canvas-ignore="true"
+          class="no-print text-xs font-bold text-app-textMuted hover:text-app-white uppercase tracking-widest flex items-center gap-1 mb-4 transition-colors">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i> Volver a métricas de obra
+        </button>
+
+        <h2
+          class="text-xs font-black text-app-textMain mb-2 flex items-center gap-1.5 uppercase tracking-widest border-b border-app-border pb-2 print:border-black">
+          <i data-lucide="building-2" class="w-4 h-4 text-app-neon no-print"></i> Datos del Cliente y Proyecto
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Responsable de Obra</label>
+            <input type="text" id="form-nombres"
+              class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
+              placeholder="Ingeniero Residente" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Teléfono Móvil (En
+              sitio)</label>
+            <input type="tel" id="form-telefono"
+              class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
+              placeholder="+1..." />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Razón Social /
+              Constructora</label>
+            <input type="text" id="form-empresa"
+              class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
+              placeholder="Nombre legal de la empresa" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Ubicación / Proyecto</label>
+            <input type="text" id="form-direccion"
+              class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
+              placeholder="Ej. Residencial Las Palmas, Lote 4" />
+          </div>
+        </div>
+
+        <div class="hidden print:block mt-6">
+          <h2 class="text-xs font-black text-black mb-2 uppercase tracking-widest border-b border-black pb-1">Equipos
+            Solicitados</h2>
+          <div id="print-cart-list" class="text-xs mb-4"></div>
+        </div>
+
+        <div class="bg-app-black border border-app-border p-4 mt-6 transition-colors print-border">
+          <div class="flex justify-between items-center text-xs mb-2 text-app-textMuted font-bold">
+            <span>Subtotal Renta Máquinas (Tarifa por Hora):</span>
+            <span id="resumen-maquinas-puro">$0.00</span>
+          </div>
+
+          <div id="row-descuento"
+            class="flex justify-between items-center text-xs mb-2 text-green-500 font-bold hidden">
+            <span id="label-descuento">Bonificación Tarifa Volumen:</span>
+            <span id="resumen-descuento">-$0.00</span>
+          </div>
+
+          <div class="flex justify-between items-center text-xs mb-2 text-app-textMuted font-bold">
+            <span>Servicio de Operador Certificado:</span>
+            <span id="resumen-operador">$0.00</span>
+          </div>
+
+          <div id="row-viaticos"
+            class="flex justify-between items-center text-xs mb-2 text-app-textMuted font-bold hidden">
+            <span>Viáticos Operador (Foránea):</span>
+            <span id="resumen-viaticos">$0.00</span>
+          </div>
+
+          <div class="flex justify-between items-center text-xs mb-2 text-app-textMuted font-bold">
+            <span id="label-combustible">Suministro Diésel:</span>
+            <span id="resumen-combustible">$0.00</span>
+          </div>
+
+          <div class="flex justify-between items-center text-xs mb-2 text-app-textMuted font-bold">
+            <span>Flete Logístico (Ida y Vuelta):</span>
+            <span id="resumen-flete">$0.00</span>
+          </div>
+
+          <div class="flex justify-between items-center text-xs mb-3 text-app-textMuted font-bold">
+            <span>Seguro Póliza (8% s/ renta pura):</span>
+            <span id="resumen-seguro">$0.00</span>
+          </div>
+
+          <div
+            class="flex justify-between items-center text-xs mb-2 text-app-textMuted font-bold border-t border-app-border print:border-black pt-3">
+            <span>Subtotal Operativo:</span>
+            <span id="resumen-subtotal-operativo" class="text-app-white">$0.00</span>
+          </div>
+          <div class="flex justify-between items-center text-xs mb-3 text-app-textMuted font-bold">
+            <span>ITBIS (18%):</span>
+            <span id="resumen-itbis" class="text-app-white">$0.00</span>
+          </div>
+
+          <div class="flex items-center justify-between border-t border-app-border print:border-black pt-3">
+            <span class="text-app-white font-black text-xs uppercase tracking-widest">Presupuesto Final:</span>
+            <span class="text-2xl font-black text-app-neon tracking-tight" id="resumen-total">$0.00</span>
+          </div>
+          <div class="text-right mt-2 no-print">
+            <span id="label-quote-id" class="text-[10px] font-bold text-app-textMuted uppercase hidden">ID: <span
+                id="val-quote-id" class="text-app-neon"></span></span>
+          </div>
+        </div>
+
+        <div
+          class="bg-yellow-500/10 border border-yellow-500/20 print:border-black print:bg-transparent p-3 rounded-sm flex items-start gap-3 mt-4">
+          <i data-lucide="shield-alert" class="w-5 h-5 text-yellow-500 no-print flex-shrink-0 mt-0.5"></i>
+          <p class="text-[10px] font-bold text-yellow-600 dark:text-yellow-500 print:text-black leading-tight">
+            CONDICIONES COMERCIALES: Toda renta de maquinaria pesada requiere un depósito en garantía, firma de contrato
+            y pagaré notarial antes del despacho. Tarifas sujetas a cambio sin previo aviso. Validez de cotización: 15
+            días.</p>
+        </div>
+
+        <div class="hidden print:flex justify-between items-end mt-16 px-8">
+          <div class="text-center">
+            <div class="w-48 border-b border-black mb-2"></div>
+            <p class="text-xs font-bold uppercase">Autorizado por MaqRent</p>
+          </div>
+          <div class="text-center">
+            <div class="w-48 border-b border-black mb-2"></div>
+            <p class="text-xs font-bold uppercase">Aceptación Cliente</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- FOOTER FLOTANTE -->
+    <div
+      class="no-print fixed md:sticky bottom-0 left-0 w-full bg-app-surface border-t-2 border-app-border p-3 md:p-4 z-40 shadow-[0_-10px_30px_var(--shadow-val)] md:shadow-none flex items-center justify-between gap-4 transition-all"
+      id="sticky-footer">
+      <div class="flex flex-col w-1/3">
+        <p class="text-[9px] text-app-textMuted font-bold uppercase tracking-widest mb-0.5">TOTAL (INC. ITBIS)</p>
+        <p class="text-lg md:text-2xl font-black text-app-white tracking-tight leading-none" id="precio-total">$0.00</p>
+      </div>
+
+      <button id="btn-continuar" onclick="cambiarPaso(2)" disabled
+        class="w-2/3 bg-app-neon disabled:bg-app-border disabled:text-app-textMuted disabled:cursor-not-allowed text-white px-6 py-3 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-app-neonHover transition-colors flex items-center justify-center gap-2">
+        Avanzar
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>
+
+      <div id="action-buttons-final" class="hidden flex gap-2 w-2/3 justify-end overflow-x-auto">
+        <button onclick="descargarExcel()"
+          class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-300 dark:border-green-700 px-3 py-3 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors flex items-center justify-center gap-2"
+          title="Descargar archivo Excel">
+          <i data-lucide="sheet" class="w-4 h-4"></i> <span class="hidden md:inline">Excel</span>
+        </button>
+        <button onclick="generarPDF()"
+          class="bg-app-surface2 text-app-textMain border border-app-border px-3 py-3 rounded-sm font-black text-xs uppercase tracking-widest hover:border-app-neon transition-colors flex items-center justify-center gap-2">
+          <i data-lucide="printer" class="w-4 h-4"></i> <span class="hidden md:inline">PDF</span>
+        </button>
+        <button onclick="aprobarCotizacion()"
+          class="bg-green-600 text-white px-4 py-3 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-green-700 transition-colors flex items-center justify-center gap-2 flex-1">
+          Aprobar
+          <i data-lucide="check" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL DE PRODUCTOS -->
+  <div id="modal-productos"
+    class="no-print fixed inset-0 bg-black/80 z-50 hidden flex justify-center items-center p-2 md:p-4 backdrop-blur-sm">
+    <div
+      class="bg-app-surface w-full max-w-5xl border border-app-border rounded-sm overflow-hidden flex flex-col max-h-[90vh] modal-enter relative hard-shadow transition-colors">
+
+      <!-- Cabecera del Modal -->
+      <div
+        class="p-4 border-b border-app-border flex justify-between items-center bg-app-black shrink-0 transition-colors">
+        <h3 class="text-sm font-black text-app-white flex items-center gap-2 tracking-widest uppercase"
+          id="modal-titulo">Categoría</h3>
+        <button onclick="cerrarModal()"
+          class="text-app-textMuted hover:text-app-white bg-app-surface2 hover:bg-app-neon p-1.5 rounded-sm transition-colors border border-app-border hover:border-app-neon">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Barra de Búsqueda -->
+      <div class="px-4 pt-4 shrink-0">
+        <div class="relative">
+          <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-app-textMuted"></i>
+          <input type="text" id="modal-search" placeholder="Buscar equipo o modelo..."
+            class="w-full pl-9 p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
+            onkeyup="filtrarModal(this.value)" />
+        </div>
+      </div>
+
+      <div
+        class="bg-app-surface2 p-3 mx-4 mt-4 rounded-sm flex items-start gap-3 text-[10px] md:text-xs text-app-textMuted font-bold border-l-2 border-app-neon shrink-0">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-app-neon flex-shrink-0 mt-0.5"></i>
+        <p id="modal-alerta" class="leading-relaxed">Info.</p>
+      </div>
+
+      <div class="p-4 overflow-y-auto" id="modal-grid"></div>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX PARA FOTOS -->
+  <div id="lightbox" class="fixed inset-0 z-[100] hidden flex items-center justify-center zoom-overlay p-4 md:p-12"
+    onclick="this.classList.add('hidden')">
+    <div class="relative max-w-5xl w-full h-full flex items-center justify-center">
+      <img id="lightbox-img" src=""
+        class="max-w-full max-h-full object-contain rounded-sm shadow-2xl scale-95 img-loaded" />
+      <button
+        class="absolute top-0 right-0 text-white/50 hover:text-white p-4 transition-colors font-sans leading-none">
+        <span class="text-4xl">&times;</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
