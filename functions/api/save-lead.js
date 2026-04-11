@@ -1,4 +1,6 @@
 import { z } from 'zod';
+// v1.0.1 - Force deployment to refresh KV bindings
+
 
 const LeadSchema = z.object({
     "Razón Social / Constructora": z.string().min(1),
