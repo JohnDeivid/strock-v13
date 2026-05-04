@@ -194,24 +194,12 @@
           <h2 class="text-xs font-black text-app-textMain mb-3 flex items-center gap-1.5 uppercase tracking-widest">
             <i data-lucide="layers" class="w-4 h-4 text-app-neon"></i> Flota Disponible
           </h2>
-          <div class="grid grid-cols-3 gap-2 md:gap-4">
-            <button onclick="abrirModal('Equipo Pesado')"
+          <div class="grid grid-cols-1 gap-2 md:gap-4">
+            <button onclick="abrirModal('Todas')"
               class="flex flex-col items-center justify-center gap-2 p-4 bg-app-surface2 border border-app-border rounded-sm hover:border-app-neon hover:bg-app-black transition-all text-app-textMuted hover:text-app-neon group relative overflow-hidden">
-              <i data-lucide="crane" class="w-7 h-7 transition-transform group-hover:scale-110 relative z-10"></i>
+              <i data-lucide="layers" class="w-7 h-7 transition-transform group-hover:scale-110 relative z-10"></i>
               <span
-                class="font-black text-[10px] md:text-xs text-center uppercase tracking-widest relative z-10 text-app-white">Pesado</span>
-            </button>
-            <button onclick="abrirModal('Equipo Ligero')"
-              class="flex flex-col items-center justify-center gap-2 p-4 bg-app-surface2 border border-app-border rounded-sm hover:border-app-neon hover:bg-app-black transition-all text-app-textMuted hover:text-app-neon group relative overflow-hidden">
-              <i data-lucide="tractor" class="w-7 h-7 transition-transform group-hover:scale-110 relative z-10"></i>
-              <span
-                class="font-black text-[10px] md:text-xs text-center uppercase tracking-widest relative z-10 text-app-white">Ligero</span>
-            </button>
-            <button onclick="abrirModal('Accesorios')"
-              class="flex flex-col items-center justify-center gap-2 p-4 bg-app-surface2 border border-app-border rounded-sm hover:border-app-neon hover:bg-app-black transition-all text-app-textMuted hover:text-app-neon group relative overflow-hidden">
-              <i data-lucide="drill" class="w-7 h-7 transition-transform group-hover:scale-110 relative z-10"></i>
-              <span
-                class="font-black text-[10px] md:text-xs text-center uppercase tracking-widest relative z-10 text-app-white">Aditamentos</span>
+                class="font-black text-[10px] md:text-xs text-center uppercase tracking-widest relative z-10 text-app-white">Equipos</span>
             </button>
           </div>
         </div>
@@ -456,14 +444,14 @@
       <div
         class="p-4 border-b border-app-border flex justify-between items-center bg-app-black shrink-0 transition-colors">
         <h3 class="text-sm font-black text-app-white flex items-center gap-2 tracking-widest uppercase"
-          id="modal-titulo">Categoría</h3>
+          id="modal-titulo">Catálogo de Equipos</h3>
         <button onclick="cerrarModal()"
           class="text-app-textMuted hover:text-app-white bg-app-surface2 hover:bg-app-neon p-1.5 rounded-sm transition-colors border border-app-border hover:border-app-neon">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
-      <!-- Barra de Búsqueda -->
+      <!-- Barra de Búsqueda y Filtros -->
       <div class="px-4 pt-4 shrink-0">
         <div class="relative">
           <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-app-textMuted"></i>
@@ -471,17 +459,64 @@
             class="w-full pl-9 p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
             onkeyup="filtrarModal(this.value)" />
         </div>
-      </div>
-
-      <div
-        class="bg-app-surface2 p-3 mx-4 mt-4 rounded-sm flex items-start gap-3 text-[10px] md:text-xs text-app-textMuted font-bold border-l-2 border-app-neon shrink-0">
-        <i data-lucide="alert-triangle" class="w-4 h-4 text-app-neon flex-shrink-0 mt-0.5"></i>
-        <p id="modal-alerta" class="leading-relaxed">Info.</p>
+        <div class="flex gap-2 mt-3 overflow-x-auto pb-1" id="modal-filters">
+          <button onclick="filtrarCategoria('Todas')" class="filter-tab active bg-app-neon text-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors">Todas</button>
+          <button onclick="filtrarCategoria('Equipo Ligero')" class="filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors">Equipo Ligero</button>
+          <button onclick="filtrarCategoria('Equipo Pesado')" class="filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors">Equipo Pesado</button>
+          <button onclick="filtrarCategoria('Accesorios')" class="filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors">Accesorios</button>
+        </div>
       </div>
 
       <div class="p-4 overflow-y-auto" id="modal-grid"></div>
     </div>
   </div>
+
+  <!-- SUB-MENÚ (Nested Modal) -->
+  <div id="modal-submenu"
+    class="no-print fixed inset-0 bg-black/90 z-[60] hidden flex justify-center items-center p-4 backdrop-blur-sm">
+    <div
+      class="bg-app-surface w-full max-w-md border border-app-border rounded-sm overflow-hidden flex flex-col modal-enter relative hard-shadow transition-colors">
+      
+      <div class="relative w-full h-48 bg-app-black border-b border-app-border">
+        <img id="submenu-img" src="" class="w-full h-full object-cover opacity-80" />
+        <button onclick="cerrarSubMenu()"
+          class="absolute top-2 right-2 text-white hover:text-app-neon bg-black/50 hover:bg-black p-1.5 rounded-sm transition-colors border border-transparent hover:border-app-neon">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-5">
+        <h3 id="submenu-titulo" class="text-lg font-black text-app-white uppercase leading-tight"></h3>
+        <p id="submenu-modelo" class="text-xs font-bold text-app-neon mt-1 uppercase tracking-wider"></p>
+        <p id="submenu-desc" class="text-xs text-app-textMuted mt-3 leading-relaxed line-clamp-3"></p>
+
+        <div class="mt-5 space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Ingreso</label>
+              <input type="date" id="submenu-inicio"
+                class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-app-textMain text-xs font-bold transition-colors cursor-pointer" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Retiro</label>
+              <input type="date" id="submenu-fin"
+                class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-app-textMain text-xs font-bold transition-colors cursor-pointer" />
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <button onclick="confirmarSubMenu()" class="w-full bg-app-neon text-white px-4 py-3 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-app-neonHover transition-colors flex items-center justify-center gap-2">
+            Añadir al Manifiesto
+            <i data-lucide="plus" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS CONTAINER -->
+  <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2"></div>
 
   <!-- LIGHTBOX PARA FOTOS -->
   <div id="lightbox" class="fixed inset-0 z-[100] hidden flex items-center justify-center zoom-overlay p-4 md:p-12"

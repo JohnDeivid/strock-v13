@@ -118,6 +118,32 @@ async function cargarInventarioAirtable(retries = 3) {
 // =========================================================================
 // 4. LÓGICA DE UI Y EVENTOS (Modales, Fechas, Temas)
 // =========================================================================
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  const isError = type === 'error';
+  const bgColor = isError ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20';
+  const iconColor = isError ? 'text-red-500' : 'text-green-500';
+  const textColor = isError ? 'text-red-500' : 'text-green-500';
+  const icon = isError ? 'alert-circle' : 'check-circle';
+
+  toast.className = `${bgColor} border p-3 rounded-sm flex items-start gap-3 shadow-lg fade-in transition-all duration-300`;
+  toast.innerHTML = `
+    <i data-lucide="${icon}" class="w-5 h-5 ${iconColor} flex-shrink-0 mt-0.5"></i>
+    <p class="text-[11px] md:text-xs font-bold ${textColor} leading-tight">${message}</p>
+  `;
+
+  container.appendChild(toast);
+  lucide.createIcons({ root: toast });
+
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-[-10px]');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
 btnTheme.addEventListener('click', () => {
   isDark = !isDark;
   if (isDark) {
@@ -130,46 +156,132 @@ btnTheme.addEventListener('click', () => {
   lucide.createIcons();
 });
 
-function abrirModal(categoria) {
+let currentCategoriaSeleccionada = 'Todas';
+
+function abrirModal(categoriaIncial = 'Todas') {
   document.body.style.overflow = 'hidden';
-  const data = productosDB[categoria];
-  document.getElementById('modal-titulo').innerHTML = `<i data-lucide="${data.icon}" class="w-4 h-4 text-app-neon"></i> ${categoria}`;
-  document.getElementById('modal-alerta').innerText = data.alerta;
+  document.getElementById('modal-titulo').innerHTML = `<i data-lucide="layers" class="w-4 h-4 text-app-neon"></i> Catálogo de Equipos`;
   document.getElementById('modal-search').value = '';
 
+  renderizarGridModal();
+  document.getElementById('modal-productos').classList.remove('hidden');
+  lucide.createIcons();
+  filtrarCategoria(categoriaIncial);
+}
+
+function renderizarGridModal() {
   const grid = document.getElementById('modal-grid');
   grid.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="modal-items-container"></div>';
   const container = grid.querySelector('div');
 
-  data.items.forEach(prod => {
-    container.innerHTML += `
-      <div class="modal-item bg-app-surface2 border border-app-border rounded-sm p-3 flex gap-3 hover:border-app-neon transition-colors group" data-name="${prod.nombre.toLowerCase()} ${prod.modelo.toLowerCase()}">
-        <div class="w-20 h-20 bg-app-black rounded-sm flex-shrink-0 overflow-hidden border border-app-border">
-           <img src="${prod.imagen}" alt="${prod.nombre}" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-100 group-hover:opacity-100" onload="this.classList.add('img-loaded')" />
-        </div>
-        <div class="flex-1 min-w-0 flex flex-col justify-between">
-          <div>
-            <h4 class="font-black text-app-white text-xs md:text-sm leading-tight uppercase">${prod.nombre}</h4>
-            <p class="text-[10px] font-bold text-app-textMuted mt-0.5">MOD: ${prod.modelo}</p>
-            <details class="mt-2 text-[10px] group">
-              <summary class="font-bold text-app-textMuted hover:text-app-neon cursor-pointer outline-none flex items-center gap-1.5 list-none">
-                <i data-lucide="info" class="w-3.5 h-3.5"></i> Descripción
-                <i data-lucide="chevron-down" class="w-3 h-3 transition-transform group-open:rotate-180 ml-auto"></i>
-              </summary>
-              <div class="mt-2 text-app-textMuted border-l-2 border-app-border pl-2 leading-relaxed whitespace-pre-line text-[10px]">
-                ${prod.descripcion}
-              </div>
-            </details>
+  Object.keys(productosDB).forEach(catKey => {
+    const data = productosDB[catKey];
+    data.items.forEach(prod => {
+      container.innerHTML += `
+        <div class="modal-item bg-app-surface2 border border-app-border rounded-sm p-3 flex gap-3 hover:border-app-neon transition-colors group" data-name="${prod.nombre.toLowerCase()} ${prod.modelo.toLowerCase()}" data-category="${catKey}">
+          <div class="w-20 h-20 bg-app-black rounded-sm flex-shrink-0 overflow-hidden border border-app-border">
+             <img src="${prod.imagen}" alt="${prod.nombre}" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-100 group-hover:opacity-100" onload="this.classList.add('img-loaded')" />
           </div>
-          <div class="flex items-center justify-between mt-2">
-            <p class="text-app-neon font-black text-xs">$${prod.precioHora}/Hr</p>
-            <button onclick="agregarAlCarrito('${categoria}', '${prod.id}')" class="bg-app-black border border-app-border text-app-white hover:bg-app-neon hover:border-app-neon hover:text-white font-black px-3 py-1.5 text-[10px] uppercase rounded-sm transition-colors">Añadir</button>
+          <div class="flex-1 min-w-0 flex flex-col justify-between">
+            <div>
+              <h4 class="font-black text-app-white text-xs md:text-sm leading-tight uppercase">${prod.nombre}</h4>
+              <p class="text-[10px] font-bold text-app-textMuted mt-0.5">MOD: ${prod.modelo}</p>
+              <details class="mt-2 text-[10px] group">
+                <summary class="font-bold text-app-textMuted hover:text-app-neon cursor-pointer outline-none flex items-center gap-1.5 list-none">
+                  <i data-lucide="info" class="w-3.5 h-3.5"></i> Descripción
+                  <i data-lucide="chevron-down" class="w-3 h-3 transition-transform group-open:rotate-180 ml-auto"></i>
+                </summary>
+                <div class="mt-2 text-app-textMuted border-l-2 border-app-border pl-2 leading-relaxed whitespace-pre-line text-[10px]">
+                  ${prod.descripcion}
+                </div>
+              </details>
+            </div>
+            <div class="flex items-center justify-between mt-2">
+              <p class="text-app-neon font-black text-xs">$${prod.precioHora}/Hr</p>
+              <button onclick="abrirSubMenu('${catKey}', '${prod.id}')" class="bg-app-black border border-app-border text-app-white hover:bg-app-neon hover:border-app-neon hover:text-white font-black px-3 py-1.5 text-[10px] uppercase rounded-sm transition-colors">Añadir</button>
+            </div>
           </div>
-        </div>
-      </div>`;
+        </div>`;
+    });
   });
-  document.getElementById('modal-productos').classList.remove('hidden');
-  lucide.createIcons();
+}
+
+function filtrarCategoria(categoria) {
+  currentCategoriaSeleccionada = categoria;
+  
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    if (tab.innerText.trim().toLowerCase() === categoria.toLowerCase()) {
+      tab.className = "filter-tab active bg-app-neon text-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors";
+    } else {
+      tab.className = "filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors";
+    }
+  });
+
+  aplicarFiltros();
+}
+
+function aplicarFiltros() {
+  const term = document.getElementById('modal-search').value.toLowerCase();
+  const items = document.querySelectorAll('.modal-item');
+  items.forEach(item => {
+    const matchesCategory = currentCategoriaSeleccionada === 'Todas' || item.dataset.category === currentCategoriaSeleccionada;
+    const matchesSearch = item.dataset.name.includes(term);
+    if (matchesCategory && matchesSearch) {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
+function filtrarModal(texto) {
+  aplicarFiltros();
+}
+
+let submenuItemTemp = null;
+
+function abrirSubMenu(categoria, idProducto) {
+  const prod = productosDB[categoria].items.find(i => i.id === idProducto);
+  if (!prod) return;
+  submenuItemTemp = { categoria, prod };
+
+  document.getElementById('submenu-img').src = prod.imagen;
+  document.getElementById('submenu-titulo').innerText = prod.nombre;
+  document.getElementById('submenu-modelo').innerText = `MOD: ${prod.modelo}`;
+  document.getElementById('submenu-desc').innerText = prod.descripcion;
+  
+  document.getElementById('submenu-inicio').value = document.getElementById('input-fecha-inicio').value;
+  document.getElementById('submenu-fin').value = document.getElementById('input-fecha-fin').value;
+
+  document.getElementById('modal-submenu').classList.remove('hidden');
+}
+
+function cerrarSubMenu() {
+  document.getElementById('modal-submenu').classList.add('hidden');
+  submenuItemTemp = null;
+}
+
+function confirmarSubMenu() {
+  if (!submenuItemTemp) return;
+  const { categoria, prod } = submenuItemTemp;
+  const fInicio = document.getElementById('submenu-inicio').value;
+  const fFin = document.getElementById('submenu-fin').value;
+  
+  if (fFin < fInicio) {
+      showToast('La fecha de retiro no puede ser menor a la de ingreso.', 'error');
+      return;
+  }
+
+  const existe = carrito.find(i => i.id === prod.id);
+  if (existe) {
+      if (existe.qty >= prod.stock) return showToast(`Stock máximo alcanzado en Airtable (${prod.stock} uds).`, 'error');
+      existe.qty += 1;
+  } else {
+      carrito.push({ ...prod, categoria, qty: 1, fInicio, fFin });
+  }
+  renderCarrito();
+  showToast(`${prod.nombre} añadido al manifiesto.`, 'success');
+  cerrarSubMenu();
 }
 
 function cerrarModal() { 
@@ -180,18 +292,9 @@ function cerrarModal() {
 document.getElementById('modal-productos').addEventListener('click', function (e) {
   if (e.target === this) cerrarModal();
 });
-
-function filtrarModal(texto) {
-  const term = texto.toLowerCase();
-  const items = document.querySelectorAll('.modal-item');
-  items.forEach(item => {
-    if (item.dataset.name.includes(term)) {
-      item.style.display = 'flex';
-    } else {
-      item.style.display = 'none';
-    }
-  });
-}
+document.getElementById('modal-submenu').addEventListener('click', function (e) {
+  if (e.target === this) cerrarSubMenu();
+});
 
 function cambiarPaso(paso) {
   if (paso === 1) {
@@ -215,18 +318,18 @@ function agregarAlCarrito(categoria, idProducto) {
   const prod = productosDB[categoria].items.find(i => i.id === idProducto);
   const existe = carrito.find(i => i.id === idProducto);
   if (existe) {
-    if (existe.qty >= prod.stock) return alert(`Stock máximo alcanzado en Airtable (${prod.stock} uds).`);
+    if (existe.qty >= prod.stock) return showToast(`Stock máximo alcanzado en Airtable (${prod.stock} uds).`, 'error');
     existe.qty += 1;
   } else {
     carrito.push({ ...prod, categoria, qty: 1, fInicio: document.getElementById('input-fecha-inicio').value, fFin: document.getElementById('input-fecha-fin').value });
   }
-  cerrarModal(); renderCarrito();
+  renderCarrito();
 }
 
 function cambiarCantidad(idProducto, delta) {
   const item = carrito.find(i => i.id === idProducto);
   if (item) {
-    if (delta > 0 && item.qty >= item.stock) return alert(`Stock máximo alcanzado en Airtable (${item.stock} uds).`);
+    if (delta > 0 && item.qty >= item.stock) return showToast(`Stock máximo alcanzado en Airtable (${item.stock} uds).`, 'error');
     item.qty += delta;
     if (item.qty <= 0) carrito = carrito.filter(i => i.id !== idProducto);
   }
@@ -529,18 +632,19 @@ function recopilarDatosCotizacion() {
  */
 function generarPDF() {
   if (carrito.length === 0) {
-    alert('Añade al menos un equipo al manifiesto antes de generar el PDF.');
+    showToast('Añade al menos un equipo al manifiesto antes de generar el PDF.', 'error');
     return;
   }
   try {
     const datos = recopilarDatosCotizacion();
     const success = window.generarCotizacionPDF(datos); // default: triggers download
     if (success) {
+      showToast('PDF generado y descargado con éxito.', 'success');
       console.log("PDF generado y descargado con éxito.");
     }
   } catch (err) {
     console.error("Error al generar PDF:", err);
-    alert("Hubo un error al generar el documento PDF. Detalle del error: " + err.message);
+    showToast("Hubo un error al generar el documento PDF. Detalle del error: " + err.message, 'error');
   }
 }
 
@@ -645,13 +749,13 @@ async function aprobarCotizacion() {
         const errJson = await resp.json();
         errText = errJson.details || errJson.error || errText;
       } catch (e) {}
-      alert("Error al guardar en Airtable. Detalle:\n\n" + errText);
+      showToast("Error al guardar en Airtable. Detalle: " + errText, 'error');
     } else {
-      alert("¡Cotización guardada exitosamente!\nID: " + window.current_quote_id + "\n\nEl PDF profesional ha sido generado y enviado.");
+      showToast("¡Cotización guardada exitosamente! El PDF profesional ha sido generado.", 'success');
       cambiarPaso(1);
     }
   } catch (err) {
-    alert("Error de red: Recuerda que esta aplicación requiere conexión a internet.");
+    showToast("Error de red: Recuerda que esta aplicación requiere conexión a internet.", 'error');
     console.error("Excepción de red:", err);
   }
 
