@@ -176,7 +176,8 @@ export async function onRequestPost(context) {
         }
 
         const AirtableBody = {
-            records: [{ fields: airtableFields }]
+            records: [{ fields: airtableFields }],
+            typecast: true
         };
 
         const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}`, {
