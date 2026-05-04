@@ -281,13 +281,15 @@
               placeholder="Ingeniero Residente" />
           </div>
           <div>
-            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Teléfono Móvil (En sitio)</label>
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Teléfono Móvil (En
+              sitio)</label>
             <input type="tel" id="form-telefono"
               class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
               placeholder="+1 (809) 000-0000" />
           </div>
           <div>
-            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Razón Social / Constructora</label>
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Razón Social /
+              Constructora</label>
             <input type="text" id="form-empresa"
               class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
               placeholder="Nombre legal de la empresa" />
@@ -459,11 +461,21 @@
             class="w-full pl-9 p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
             onkeyup="filtrarModal(this.value)" />
         </div>
-        <div class="flex gap-2 mt-3 overflow-x-auto pb-1" id="modal-filters">
-          <button onclick="filtrarCategoria('Todas')" class="filter-tab active bg-app-neon text-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors">Todas</button>
-          <button onclick="filtrarCategoria('Equipo Ligero')" class="filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors">Equipo Ligero</button>
-          <button onclick="filtrarCategoria('Equipo Pesado')" class="filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors">Equipo Pesado</button>
-          <button onclick="filtrarCategoria('Accesorios')" class="filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors">Accesorios</button>
+
+        <div class="mt-3 flex items-start gap-2 border-l-4 border-yellow-500 bg-yellow-500/10 p-2 rounded-r-sm shadow-sm transition-all">
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5"></i>
+          <p class="text-[10px] md:text-xs font-bold text-yellow-500 leading-tight">Requiere logística en Lowboy. Las tarifas base mostradas son por hora trabajada (Horómetro).</p>
+        </div>
+
+        <div class="flex justify-center gap-4 mt-4 overflow-x-auto pb-1" id="modal-filters">
+          <button onclick="filtrarCategoria('Todas')"
+            class="filter-tab active bg-app-neon text-white px-3 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors">Todas</button>
+          <button onclick="filtrarCategoria('Equipo Ligero')"
+            class="filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors">Equipo
+            Ligero</button>
+          <button onclick="filtrarCategoria('Equipo Pesado')"
+            class="filter-tab bg-app-surface2 border border-app-border text-app-textMuted hover:text-app-white px-3 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap transition-colors">Equipo
+            Pesado</button>
         </div>
       </div>
 
@@ -476,38 +488,43 @@
     class="no-print fixed inset-0 bg-black/90 z-[60] hidden flex justify-center items-center p-4 backdrop-blur-sm">
     <div
       class="bg-app-surface w-full max-w-md border border-app-border rounded-sm overflow-hidden flex flex-col modal-enter relative hard-shadow transition-colors">
-      
+
       <div class="relative w-full h-48 bg-app-black border-b border-app-border">
-        <img id="submenu-img" src="" class="w-full h-full object-cover opacity-80" />
+        <img id="submenu-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="w-full h-full object-cover" />
         <button onclick="cerrarSubMenu()"
           class="absolute top-2 right-2 text-white hover:text-app-neon bg-black/50 hover:bg-black p-1.5 rounded-sm transition-colors border border-transparent hover:border-app-neon">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
-      <div class="p-5">
+      <div class="p-4 md:p-5">
         <h3 id="submenu-titulo" class="text-lg font-black text-app-white uppercase leading-tight"></h3>
         <p id="submenu-modelo" class="text-xs font-bold text-app-neon mt-1 uppercase tracking-wider"></p>
-        <p id="submenu-desc" class="text-xs text-app-textMuted mt-3 leading-relaxed line-clamp-3"></p>
+        <p id="submenu-desc" class="text-xs text-app-textMuted mt-2 leading-relaxed"></p>
 
-        <div class="mt-5 space-y-3">
+        <div class="mt-4 space-y-2">
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Ingreso</label>
               <input type="date" id="submenu-inicio"
-                class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-app-textMain text-xs font-bold transition-colors cursor-pointer" />
+                class="w-full p-2 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-app-textMain text-xs font-bold transition-colors cursor-pointer" />
             </div>
             <div>
               <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Retiro</label>
               <input type="date" id="submenu-fin"
-                class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-app-textMain text-xs font-bold transition-colors cursor-pointer" />
+                class="w-full p-2 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-app-textMain text-xs font-bold transition-colors cursor-pointer" />
             </div>
           </div>
         </div>
 
-        <div class="mt-6">
-          <button onclick="confirmarSubMenu()" class="w-full bg-app-neon text-white px-4 py-3 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-app-neonHover transition-colors flex items-center justify-center gap-2">
-            Añadir al Manifiesto
+        <div class="mt-3 flex items-start gap-2 border-l-4 border-app-neon pl-3">
+          <p class="text-[10px] text-app-textMuted leading-tight italic">"<span id="submenu-comentarios"></span>"</p>
+        </div>
+
+        <div class="mt-4">
+          <button onclick="confirmarSubMenu()"
+            class="w-full bg-app-neon text-white px-4 py-2 rounded-sm font-black text-xs uppercase tracking-widest hover:bg-app-neonHover transition-colors flex items-center justify-center gap-2">
+            Agregar
             <i data-lucide="plus" class="w-4 h-4"></i>
           </button>
         </div>

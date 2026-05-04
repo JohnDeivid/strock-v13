@@ -89,7 +89,8 @@ async function cargarInventarioAirtable(retries = 3) {
           stock: f.Stock || 0,
           portadorValido: f.PortadorValido || false,
           requierePortador: f.RequierePortador || false,
-           esMartillo: f.EsMartillo || false
+           esMartillo: f.EsMartillo || false,
+           comentarios: f.Comentarios || 'Equipo inspeccionado y en óptimas condiciones para operación.'
         });
       }
     });
@@ -125,9 +126,9 @@ function showToast(message, type = 'success') {
 
   const toast = document.createElement('div');
   const isError = type === 'error';
-  const bgColor = isError ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20';
-  const iconColor = isError ? 'text-red-500' : 'text-green-500';
-  const textColor = isError ? 'text-red-500' : 'text-green-500';
+  const bgColor = isError ? 'bg-red-600 border-red-700' : 'bg-green-600 border-green-700';
+  const iconColor = 'text-white';
+  const textColor = 'text-white';
   const icon = isError ? 'alert-circle' : 'check-circle';
 
   toast.className = `${bgColor} border p-3 rounded-sm flex items-start gap-3 shadow-lg fade-in transition-all duration-300`;
@@ -249,6 +250,9 @@ function abrirSubMenu(categoria, idProducto) {
   document.getElementById('submenu-titulo').innerText = prod.nombre;
   document.getElementById('submenu-modelo').innerText = `MOD: ${prod.modelo}`;
   document.getElementById('submenu-desc').innerText = prod.descripcion;
+  
+  const commentEl = document.getElementById('submenu-comentarios');
+  if(commentEl) commentEl.innerText = prod.comentarios;
   
   document.getElementById('submenu-inicio').value = document.getElementById('input-fecha-inicio').value;
   document.getElementById('submenu-fin').value = document.getElementById('input-fecha-fin').value;
