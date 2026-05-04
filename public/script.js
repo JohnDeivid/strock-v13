@@ -246,7 +246,10 @@ function abrirSubMenu(categoria, idProducto) {
   if (!prod) return;
   submenuItemTemp = { categoria, prod };
 
-  document.getElementById('submenu-img').src = prod.imagen;
+  const imgEl = document.getElementById('submenu-img');
+  imgEl.classList.remove('img-loaded');
+  imgEl.src = prod.imagen;
+  
   document.getElementById('submenu-titulo').innerText = prod.nombre;
   document.getElementById('submenu-modelo').innerText = `MOD: ${prod.modelo}`;
   document.getElementById('submenu-desc').innerText = prod.descripcion;

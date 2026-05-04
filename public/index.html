@@ -490,7 +490,7 @@
       class="bg-app-surface w-full max-w-md border border-app-border rounded-sm overflow-hidden flex flex-col modal-enter relative hard-shadow transition-colors">
 
       <div class="relative w-full h-48 bg-app-black border-b border-app-border">
-        <img id="submenu-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="w-full h-full object-cover" />
+        <img id="submenu-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="w-full h-full object-cover" onload="this.classList.add('img-loaded')" />
         <button onclick="cerrarSubMenu()"
           class="absolute top-2 right-2 text-white hover:text-app-neon bg-black/50 hover:bg-black p-1.5 rounded-sm transition-colors border border-transparent hover:border-app-neon">
           <i data-lucide="x" class="w-4 h-4"></i>
