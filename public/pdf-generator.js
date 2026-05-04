@@ -512,13 +512,13 @@
       doc.setPage(i);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(50);
-      doc.setTextColor(200, 200, 200);
-      doc.setGState(new doc.GState({ opacity: 0.07 }));
+      doc.setTextColor(240, 240, 240); // Lighter gray to replace opacity
       doc.text('COTIZACION PREVIA', pw / 2, ph / 2, {
         align: 'center',
         angle: 35
       });
-      doc.setGState(new doc.GState({ opacity: 1 }));
+      // Reset color for safety
+      doc.setTextColor(0, 0, 0);
     }
   }
 
@@ -526,13 +526,26 @@
   // MAIN EXPORT
   // =========================================================================
   window.generarCotizacionPDF = function (datos, returnType) {
-    const { jsPDF } = window.jspdf;
+    let jsPDF;
+    if (window.jspdf && window.jspdf.jsPDF) {
+      jsPDF = window.jspdf.jsPDF;
+    } else if (window.jsPDF) {
+      jsPDF = window.jsPDF;
+    } else {
+      throw new Error("Librería jsPDF no encontrada. Revisa la conexión a internet.");
+    }
+
     const doc = new jsPDF({
       unit: 'mm',
       format: 'letter',
       orientation: 'portrait',
       compress: true
     });
+
+    // Validación crítica de autoTable
+    if (typeof doc.autoTable !== 'function') {
+      throw new Error("El plugin jsPDF-AutoTable no se cargó correctamente. Contacte a soporte.");
+    }
 
     // Page 1: Quotation
     let y = 0;
@@ -562,7 +575,7 @@
     }
     // Default: trigger download
     doc.save(filename);
-    return null;
+    return true;
   };
 
 })();

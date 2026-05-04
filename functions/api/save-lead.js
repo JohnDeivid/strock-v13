@@ -78,9 +78,9 @@ export async function onRequestPost(context) {
         let pdfLink = "";
         let storageUsed = "none";
 
-        if (pdfBase64) {
-            // Remove the data URI prefix if present
-            const base64Data = pdfBase64.replace(/^data:application\/pdf;[^,]+,/, "");
+        if (pdfBase64 && pdfBase64.includes('base64,')) {
+            // Remove the data URI prefix if present safely
+            const base64Data = pdfBase64.split('base64,')[1];
             const pdfBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
             
             const url = new URL(context.request.url);
@@ -104,9 +104,12 @@ export async function onRequestPost(context) {
                     });
                     pdfLink = `${protocol}://${host}/pdf/${validation.data.quote_id}`;
                     storageUsed = "R2";
+                    console.log(`[R2] PDF guardado exitosamente: ${objectKey}`);
                 } catch (r2Err) {
-                    console.error("R2 Storage Error:", r2Err);
+                    console.error("[R2 Error] Fallo al subir archivo:", r2Err);
                 }
+            } else {
+                console.warn("[R2 Warn] PDF_BUCKET no está vinculado en el entorno de Cloudflare.");
             }
 
             // STRATEGY 2: KV fallback (legacy — only if R2 is not configured)
@@ -117,9 +120,16 @@ export async function onRequestPost(context) {
                     });
                     pdfLink = `${protocol}://${host}/pdf/${validation.data.quote_id}`;
                     storageUsed = "KV";
+                    console.log(`[KV] PDF guardado exitosamente: ${validation.data.quote_id}`);
                 } catch (kvErr) {
-                    console.error("KV Storage Error:", kvErr);
+                    console.error("[KV Error] Fallo al subir archivo:", kvErr);
                 }
+            } else if (!pdfLink && !PDF_STORE) {
+                console.warn("[KV Warn] PDF_STORE tampoco está vinculado. El PDF no se almacenará.");
+            }
+            
+            if (!pdfLink) {
+                console.error("[Storage Error] No se pudo generar un pdfLink. Airtable no recibirá Enlace PDF.");
             }
         }
 
@@ -159,11 +169,18 @@ export async function onRequestPost(context) {
         const OPTIONAL_AIRTABLE_FIELDS = [
             "RNC Cliente",
             "Email de Contacto",
+            "Enlace PDF",
         ];
 
         const airtableFields = {};
         // Add mandatory company_id
         airtableFields.company_id = "MAQ-RENT-001";
+        
+        if (pdfLink) {
+            airtableFields["Enlace PDF"] = pdfLink;
+        } else {
+            console.warn("ADVERTENCIA: El campo 'Enlace PDF' no se enviará porque pdfLink está vacío.");
+        }
         for (const key of KNOWN_AIRTABLE_FIELDS) {
             if (validation.data[key] !== undefined) {
                 airtableFields[key] = validation.data[key];

@@ -532,8 +532,16 @@ function generarPDF() {
     alert('Añade al menos un equipo al manifiesto antes de generar el PDF.');
     return;
   }
-  const datos = recopilarDatosCotizacion();
-  window.generarCotizacionPDF(datos); // default: triggers download
+  try {
+    const datos = recopilarDatosCotizacion();
+    const success = window.generarCotizacionPDF(datos); // default: triggers download
+    if (success) {
+      console.log("PDF generado y descargado con éxito.");
+    }
+  } catch (err) {
+    console.error("Error al generar PDF:", err);
+    alert("Hubo un error al generar el documento PDF. Detalle del error: " + err.message);
+  }
 }
 
 /**
@@ -583,9 +591,13 @@ async function aprobarCotizacion() {
   // 3. Generar PDF real con jsPDF (texto seleccionable, ~50KB)
   let pdfBase64 = "";
   try {
-    pdfBase64 = window.generarCotizacionPDF(datos, 'base64');
+    if (typeof window.generarCotizacionPDF === 'function') {
+      pdfBase64 = window.generarCotizacionPDF(datos, 'base64');
+    } else {
+      console.warn("window.generarCotizacionPDF no está definida. No se puede generar el PDF base64.");
+    }
   } catch (pdfErr) {
-    console.error("Error generando PDF con jsPDF:", pdfErr);
+    console.error("Error generando PDF con jsPDF para Airtable:", pdfErr);
   }
 
   // 4. Preparar payload para API
