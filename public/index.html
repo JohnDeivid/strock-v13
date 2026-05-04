@@ -15,8 +15,9 @@
     rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
-  <!-- PDF Generation Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- PDF Generation Libraries (jsPDF + autoTable) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 </head>
 
 <body class="min-h-screen p-0 md:p-6 flex flex-col items-center">
@@ -292,20 +293,30 @@
               placeholder="Ingeniero Residente" />
           </div>
           <div>
-            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Teléfono Móvil (En
-              sitio)</label>
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Teléfono Móvil (En sitio)</label>
             <input type="tel" id="form-telefono"
               class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
-              placeholder="+1..." />
+              placeholder="+1 (809) 000-0000" />
           </div>
-          <div class="sm:col-span-2">
-            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Razón Social /
-              Constructora</label>
+          <div>
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Razón Social / Constructora</label>
             <input type="text" id="form-empresa"
               class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
               placeholder="Nombre legal de la empresa" />
           </div>
-          <div class="sm:col-span-2">
+          <div>
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">RNC del Cliente</label>
+            <input type="text" id="form-rnc"
+              class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
+              placeholder="000-000000-0" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Email de Contacto</label>
+            <input type="email" id="form-email"
+              class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
+              placeholder="cliente@empresa.com" />
+          </div>
+          <div>
             <label class="block text-[10px] font-bold text-app-textMuted mb-1 uppercase">Ubicación / Proyecto</label>
             <input type="text" id="form-direccion"
               class="w-full p-2.5 bg-app-surface2 border border-app-border rounded-sm focus:ring-1 focus:ring-app-neon outline-none text-xs text-app-white font-medium transition-colors"
@@ -485,6 +496,7 @@
     </div>
   </div>
 
+  <script src="pdf-generator.js"></script>
   <script src="script.js"></script>
 </body>
 

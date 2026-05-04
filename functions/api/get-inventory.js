@@ -11,19 +11,34 @@ export async function onRequestGet(context) {
     }
 
     try {
-        const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}`, {
-            headers: { 
-                'Authorization': `Bearer ${AIRTABLE_PAT}` 
+        // Airtable pagination: fetch ALL records (default API returns max 100 per page)
+        let allRecords = [];
+        let offset = null;
+
+        do {
+            let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}`;
+            if (offset) {
+                url += `?offset=${encodeURIComponent(offset)}`;
             }
-        });
 
-        if (!response.ok) {
-            throw new Error(`Airtable devolvió un error: ${response.status} ${response.statusText}`);
-        }
+            const response = await fetch(url, {
+                headers: { 
+                    'Authorization': `Bearer ${AIRTABLE_PAT}` 
+                }
+            });
 
-        const data = await response.json();
+            if (!response.ok) {
+                throw new Error(`Airtable devolvió un error: ${response.status} ${response.statusText}`);
+            }
 
-        return new Response(JSON.stringify(data), {
+            const data = await response.json();
+            allRecords = allRecords.concat(data.records || []);
+
+            // Airtable includes an `offset` field when there are more pages
+            offset = data.offset || null;
+        } while (offset);
+
+        return new Response(JSON.stringify({ records: allRecords }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });

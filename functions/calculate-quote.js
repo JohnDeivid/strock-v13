@@ -46,13 +46,23 @@ export async function onRequestPost(context) {
         // but for simplicity and to follow instructions of "consultar precios base desde Airtable",
         // we will fetch the relevant records.
 
-        const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}`, {
-            headers: { 'Authorization': `Bearer ${AIRTABLE_PAT}` }
-        });
+        // Fetch ALL records from Airtable with pagination (API returns max 100 per page)
+        let allRecords = [];
+        let offset = null;
+        do {
+            let fetchUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}`;
+            if (offset) fetchUrl += `?offset=${encodeURIComponent(offset)}`;
 
-        if (!response.ok) throw new Error("Airtable fetch failed");
-        const airtableData = await response.json();
-        const dbItems = airtableData.records.reduce((acc, rec) => {
+            const response = await fetch(fetchUrl, {
+                headers: { 'Authorization': `Bearer ${AIRTABLE_PAT}` }
+            });
+            if (!response.ok) throw new Error("Airtable fetch failed");
+            const pageData = await response.json();
+            allRecords = allRecords.concat(pageData.records || []);
+            offset = pageData.offset || null;
+        } while (offset);
+
+        const dbItems = allRecords.reduce((acc, rec) => {
             acc[rec.id] = rec.fields;
             return acc;
         }, {});

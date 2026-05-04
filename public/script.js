@@ -460,12 +460,87 @@ async function calcularTotales() {
 }
 
 // =========================================================================
-// 6. EXPORTACIONES (PDF, Excel)
+// 6. EXPORTACIONES (PDF, Excel) — Motor jsPDF Profesional
 // =========================================================================
-function generarPDF() { window.print(); }
 
+/**
+ * Recopila todos los datos de la cotización actual en un objeto estructurado
+ * que el pdf-generator.js consume para renderizar el documento.
+ */
+function recopilarDatosCotizacion() {
+  const horasPorDia = parseInt(document.getElementById('select-turnos').value);
+  const selectZona = document.getElementById('select-zona');
+  const selectOperador = document.getElementById('select-operador');
+  const selectTurnos = document.getElementById('select-turnos');
+  const selectCombustible = document.getElementById('select-combustible');
+
+  // Labels legibles para la configuración
+  const turnosLabel = selectTurnos.value === '8' ? '1 Turno (8 Hrs/Dia)'
+    : selectTurnos.value === '16' ? '2 Turnos (16 Hrs/Dia)' : 'Continuo (24 Hrs/Dia)';
+  const combustibleLabel = selectCombustible.value === 'dry' ? 'Maquina Seca (Cliente suministra)' : 'Maquina Humeda (+35%)';
+  const zonaMap = { urbana: 'Urbana (Lowboy Local)', periferia: 'Periferia (Cama Baja)', foranea: 'Foranea (+Viaticos)' };
+  const zonaLabel = zonaMap[selectZona.value] || 'Urbana';
+  const operadorLabel = selectOperador.value === 'no' ? 'Solo Maquina (A todo costo)' : 'Incluir Operador (+$60/Turno)';
+
+  // Equipos con cálculos por ítem
+  const equipos = carrito.map(item => {
+    const dias = getDiasLaborables(item.fInicio, item.fFin);
+    const horas = dias * horasPorDia;
+    return {
+      nombre: item.nombre,
+      modelo: item.modelo || 'N/A',
+      cantidad: item.qty,
+      tarifaHora: item.precioHora,
+      fechaIngreso: item.fInicio,
+      fechaRetiro: item.fFin,
+      diasLaborables: dias,
+      horasTotales: horas,
+      subtotal: item.precioHora * item.qty * horas
+    };
+  });
+
+  return {
+    quoteId: window.current_quote_id || 'BORRADOR',
+    fechaEmision: new Date().toISOString().split('T')[0],
+    cliente: {
+      razonSocial: document.getElementById('form-empresa').value || '---',
+      rnc: document.getElementById('form-rnc') ? document.getElementById('form-rnc').value || '---' : '---',
+      responsable: document.getElementById('form-nombres').value || '---',
+      telefono: document.getElementById('form-telefono').value || '---',
+      email: document.getElementById('form-email') ? document.getElementById('form-email').value || '---' : '---',
+      ubicacion: document.getElementById('form-direccion').value || '---'
+    },
+    config: {
+      turnosLabel,
+      combustibleLabel,
+      zonaLabel,
+      operadorLabel,
+      seguro: document.getElementById('toggle-seguro').checked,
+      domingos: document.getElementById('toggle-domingos').checked
+    },
+    equipos,
+    desglose: { ...desglose }
+  };
+}
+
+/**
+ * Genera y descarga un PDF profesional con jsPDF.
+ * Reemplaza el antiguo window.print() y la captura html2pdf.js
+ */
+function generarPDF() {
+  if (carrito.length === 0) {
+    alert('Añade al menos un equipo al manifiesto antes de generar el PDF.');
+    return;
+  }
+  const datos = recopilarDatosCotizacion();
+  window.generarCotizacionPDF(datos); // default: triggers download
+}
+
+/**
+ * Aprueba la cotización: genera PDF, sube datos a Airtable, notifica por WhatsApp.
+ */
 async function aprobarCotizacion() {
-  // 1. Deshabilitar botón temporalmente para evitar dobles envíos
+  // 1. Deshabilitar botón temporalmente
   const btnObj = document.querySelector('#action-buttons-final button:last-child');
   const originalText = btnObj ? btnObj.innerHTML : '';
   if (btnObj) {
@@ -474,76 +549,53 @@ async function aprobarCotizacion() {
     lucide.createIcons();
   }
 
-  // 2. Recolectar datos del formulario
-  const empresa = document.getElementById('form-empresa').value || 'No especificada';
-  const responsable = document.getElementById('form-nombres').value || 'No especificado';
-  const telefono = document.getElementById('form-telefono').value || 'No especificado';
-  const direccion = document.getElementById('form-direccion').value || 'No especificado';
-
+  // 2. Recopilar datos
+  const datos = recopilarDatosCotizacion();
+  const empresa = datos.cliente.razonSocial;
+  const responsable = datos.cliente.responsable;
+  const telefono = datos.cliente.telefono;
+  const direccion = datos.cliente.ubicacion;
+  const rncCliente = datos.cliente.rnc;
+  const emailCliente = datos.cliente.email;
   const fInicio = document.getElementById('input-fecha-inicio').value;
   const fFin = document.getElementById('input-fecha-fin').value;
+
   const selectTurnos = document.getElementById('select-turnos');
   let valTurnos = selectTurnos.value === "8" ? "8 Hrs" : (selectTurnos.value === "16" ? "16 Hrs" : "24 Hrs");
-  const valDiesel = document.getElementById('select-combustible').value === "dry" ? "Seca" : "Húmeda";
-
+  const valDiesel = document.getElementById('select-combustible').value === "dry" ? "Seca" : "Humeda";
   const valZonaRaw = document.getElementById('select-zona').value;
   let valZona = "Urbana";
   if (valZonaRaw === "periferia") valZona = "Periferia";
-  else if (valZonaRaw === "foranea") valZona = "Foránea";
-
-  const valOperador = document.getElementById('select-operador').value === "no" ? "Solo Máquina" : "Incluir Operador";
+  else if (valZonaRaw === "foranea") valZona = "Foranea";
+  const valOperador = document.getElementById('select-operador').value === "no" ? "Solo Maquina" : "Incluir Operador";
   const seguroIncluido = document.getElementById('toggle-seguro').checked;
-
   const horasPorDia = parseInt(selectTurnos.value);
 
+  // 2.5 Texto de equipos para Airtable
   let listaEquiposTexto = '';
   carrito.forEach(item => {
-    // Note: getDiasLaborables should be available globally or recalculated
-    // For simplicity, we use the text list generated before
-    let dias = 1; // Simplified for text log
-    try { dias = getDiasLaborables(item.fInicio, item.fFin, document.getElementById('toggle-domingos').checked); } catch(e){}
+    let dias = 1;
+    try { dias = getDiasLaborables(item.fInicio, item.fFin); } catch(e){}
     let horasTotales = dias * horasPorDia;
     listaEquiposTexto += `▪ ${item.qty}x ${item.nombre} (${horasTotales} hrs)\n`;
   });
 
-  // 2.7. Generar PDF (Captura de UI)
+  // 3. Generar PDF real con jsPDF (texto seleccionable, ~50KB)
   let pdfBase64 = "";
   try {
-    const element = document.getElementById('step-2');
-    // Forzamos visibilidad de elementos que podrían estar ocultos por lazy loading
-    window.scrollTo(0,0);
-    
-    const opt = {
-      margin:       [10, 10],
-      filename:     `cotizacion-${window.current_quote_id || 'v'}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
-        letterRendering: true
-      },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    
-    // Generar PDF y obtener string base64 con el orden correcto de métodos
-    pdfBase64 = await html2pdf().from(element).set(opt).output('datauristring');
-    
-    if (!pdfBase64 || pdfBase64 === "data:,") {
-       console.warn("PDF vacio generado, reintentando una vez...");
-       pdfBase64 = await html2pdf().from(element).set(opt).output('datauristring');
-    }
-    
+    pdfBase64 = window.generarCotizacionPDF(datos, 'base64');
   } catch (pdfErr) {
-    console.error("Error capturando PDF:", pdfErr);
+    console.error("Error generando PDF con jsPDF:", pdfErr);
   }
 
-  // 3. Preparar e invocar API de Airtable (y ahora KV para el PDF)
+  // 4. Preparar payload para API
   const payloadAirtable = {
     "Razón Social / Constructora": empresa,
     "Responsable de Obra": responsable,
     "Teléfono Móvil": telefono,
     "Ubicación / Proyecto": direccion,
+    "RNC Cliente": rncCliente,
+    "Email de Contacto": emailCliente,
     "Equipos Cotizados": listaEquiposTexto,
     "Fecha de Inicio": fInicio,
     "Fecha de Fin": fFin,
@@ -583,7 +635,7 @@ async function aprobarCotizacion() {
       } catch (e) {}
       alert("Error al guardar en Airtable. Detalle:\n\n" + errText);
     } else {
-      alert("¡Gracias! Tu cotización ha sido guardada exitosamente con ID: " + window.current_quote_id);
+      alert("¡Cotización guardada exitosamente!\nID: " + window.current_quote_id + "\n\nEl PDF profesional ha sido generado y enviado.");
       cambiarPaso(1);
     }
   } catch (err) {
@@ -591,7 +643,7 @@ async function aprobarCotizacion() {
     console.error("Excepción de red:", err);
   }
 
-  // 4. Restaurar botón
+  // 5. Restaurar botón
   if (btnObj) {
     btnObj.disabled = false;
     btnObj.innerHTML = originalText;

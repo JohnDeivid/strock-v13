@@ -19,6 +19,4 @@ Para que las funciones migradas operen correctamente, debes configurar las sigui
     *   **Preview**: (Opcional) Añade valores para tus entornos de prueba o usa los mismos.
 8.  **IMPORTANTE**: Haz clic en **Save** al terminar.
 9.  Deberás realizar un nuevo despliegue (Redeploy) para que los cambios surtan efecto.
-
----
-*Nota: Estas variables ahora se acceden a través de `context.env` en lugar de `process.env`.*
+```javascript

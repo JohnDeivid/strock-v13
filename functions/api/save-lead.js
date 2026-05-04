@@ -1,5 +1,5 @@
 import { z } from 'zod';
-// v1.0.1 - Force deployment to refresh KV bindings
+// v2.0.0 - R2 permanent storage migration (replaces KV with 10min TTL)
 
 
 const LeadSchema = z.object({
@@ -7,6 +7,8 @@ const LeadSchema = z.object({
     "Responsable de Obra": z.string().min(1),
     "Teléfono Móvil": z.string().min(1),
     "Ubicación / Proyecto": z.string().min(1),
+    "RNC Cliente": z.string().optional(),
+    "Email de Contacto": z.string().optional(),
     "Equipos Cotizados": z.string(),
     "Fecha de Inicio": z.string(),
     "Fecha de Fin": z.string(),
@@ -28,18 +30,22 @@ const LeadSchema = z.object({
     "Estado de Cotización": z.string(),
     "quote_id": z.string().min(1),
     "monto_total": z.number(),
-    "pdfBase64": z.string().optional() // New optional PDF field
+    "pdfBase64": z.string().optional()
 });
 
 export async function onRequestPost(context) {
     const AIRTABLE_PAT = context.env.AIRTABLE_PAT;
     const AIRTABLE_BASE_ID = context.env.AIRTABLE_BASE_ID;
     const AIRTABLE_TABLE = 'Leads_Cotizaciones';
+
+    // R2 Bucket for permanent PDF storage (replaces KV with 10min TTL)
+    const PDF_BUCKET = context.env.PDF_BUCKET;
+    // Legacy KV fallback (kept for backward compatibility during migration)
     const PDF_STORE = context.env.PDF_STORE;
 
-    // CallMeBot Config (Free WhatsApp API)
-    const CALLMEBOT_API_KEY = "5659087";
-    const CALLMEBOT_PHONE = "18497102480";
+    // CallMeBot Config — credentials from environment variables
+    const CALLMEBOT_API_KEY = context.env.CALLMEBOT_API_KEY || "";
+    const CALLMEBOT_PHONE = context.env.CALLMEBOT_PHONE || "";
 
     if (!AIRTABLE_PAT || !AIRTABLE_BASE_ID) {
         return new Response(JSON.stringify({ error: "Las credenciales de Airtable no están configuradas en el entorno." }), {
@@ -67,26 +73,53 @@ export async function onRequestPost(context) {
             });
         }
 
-        // --- PDF HANDLING (Cloudflare KV) ---
+        // --- PDF HANDLING ---
+        // Priority: R2 (permanent) → KV (legacy fallback with TTL)
         let pdfLink = "";
-        if (pdfBase64 && PDF_STORE) {
-            try {
-                // Remove the data URI prefix if present
-                const base64Data = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
-                const pdfBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-                
-                // Store in KV with 10 mins TTL
-                await PDF_STORE.put(validation.data.quote_id, pdfBuffer, {
-                    expirationTtl: 600
-                });
-                
-                // Generate link using request origin or host header
-                const url = new URL(context.request.url);
-                const host = context.request.headers.get('host') || url.host;
-                const protocol = context.request.headers.get('x-forwarded-proto') || (url.protocol.replace(':', ''));
-                pdfLink = `${protocol}://${host}/pdf/${validation.data.quote_id}`;
-            } catch (kvErr) {
-                console.error("KV Storage Error:", kvErr);
+        let storageUsed = "none";
+
+        if (pdfBase64) {
+            // Remove the data URI prefix if present
+            const base64Data = pdfBase64.replace(/^data:application\/pdf;[^,]+,/, "");
+            const pdfBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            
+            const url = new URL(context.request.url);
+            const host = context.request.headers.get('host') || url.host;
+            const protocol = context.request.headers.get('x-forwarded-proto') || (url.protocol.replace(':', ''));
+
+            // STRATEGY 1: Cloudflare R2 (permanent, no TTL, free up to 10GB)
+            if (PDF_BUCKET) {
+                try {
+                    const objectKey = `cotizaciones/${validation.data.quote_id}.pdf`;
+                    await PDF_BUCKET.put(objectKey, pdfBuffer, {
+                        httpMetadata: {
+                            contentType: 'application/pdf',
+                            contentDisposition: `inline; filename="cotizacion-${validation.data.quote_id}.pdf"`
+                        },
+                        customMetadata: {
+                            quoteId: validation.data.quote_id,
+                            empresa: validation.data["Razón Social / Constructora"],
+                            createdAt: new Date().toISOString()
+                        }
+                    });
+                    pdfLink = `${protocol}://${host}/pdf/${validation.data.quote_id}`;
+                    storageUsed = "R2";
+                } catch (r2Err) {
+                    console.error("R2 Storage Error:", r2Err);
+                }
+            }
+
+            // STRATEGY 2: KV fallback (legacy — only if R2 is not configured)
+            if (!pdfLink && PDF_STORE) {
+                try {
+                    await PDF_STORE.put(validation.data.quote_id, pdfBuffer, {
+                        expirationTtl: 86400 // 24 hours (upgraded from 10 min)
+                    });
+                    pdfLink = `${protocol}://${host}/pdf/${validation.data.quote_id}`;
+                    storageUsed = "KV";
+                } catch (kvErr) {
+                    console.error("KV Storage Error:", kvErr);
+                }
             }
         }
 
@@ -132,14 +165,15 @@ export async function onRequestPost(context) {
             
             let msg = `🚀 *NUEVA COTIZACIÓN VERTEX*\n\n`;
             
-            // PRIORITY: PDF LINK
+            // PDF LINK — now permanent with R2
             if (pdfLink) {
-                msg += `📄 *DESCARGAR PDF (Temporal 10 min):*\n${pdfLink}\n\n`;
+                const storageLabel = storageUsed === "R2" ? "Permanente" : "Temporal 24h";
+                msg += `📄 *DESCARGAR PDF (${storageLabel}):*\n${pdfLink}\n\n`;
             } else {
                 let reason = "Error desconocido";
                 if (!pdfBase64) reason = "El navegador no envió el archivo (Base64 vacío)";
-                else if (!PDF_STORE) reason = "PDF_STORE (KV) no vinculado en Cloudflare";
-                else reason = "Fallo al escribir en KV (Check logs)";
+                else if (!PDF_BUCKET && !PDF_STORE) reason = "PDF_BUCKET (R2) no vinculado en Cloudflare";
+                else reason = "Fallo al escribir en almacenamiento (Check logs)";
                 msg += `⚠️ *PDF NO DISPONIBLE:* \n_${reason}_\n\n`;
             }
 
@@ -155,13 +189,13 @@ export async function onRequestPost(context) {
 
             const waUrl = `https://api.callmebot.com/whatsapp.php?phone=${CALLMEBOT_PHONE}&text=${encodeURIComponent(msg)}&apikey=${CALLMEBOT_API_KEY}`;
             
-            // We use background fetch to not slow down the UI response
+            // Background fetch to not slow down the UI response
             context.waitUntil ? context.waitUntil(fetch(waUrl)) : fetch(waUrl);
         } catch (waErr) {
             console.error("WhatsApp Notify Error:", waErr);
         }
 
-        return new Response(JSON.stringify({ success: true, id: recordId, pdfUrl: pdfLink }), {
+        return new Response(JSON.stringify({ success: true, id: recordId, pdfUrl: pdfLink, storage: storageUsed }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
@@ -173,4 +207,3 @@ export async function onRequestPost(context) {
         });
     }
 }
-
