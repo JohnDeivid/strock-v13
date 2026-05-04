@@ -123,16 +123,60 @@ export async function onRequestPost(context) {
             }
         }
 
+        // Build Airtable fields explicitly — only include fields that exist in the table.
+        // Fields like "RNC Cliente" and "Email de Contacto" are NEW and may not exist yet.
+        // They are included conditionally to avoid UNKNOWN_FIELD_NAME errors.
+        const KNOWN_AIRTABLE_FIELDS = [
+            "Razón Social / Constructora",
+            "Responsable de Obra",
+            "Teléfono Móvil",
+            "Ubicación / Proyecto",
+            "Equipos Cotizados",
+            "Fecha de Inicio",
+            "Fecha de Fin",
+            "Régimen de Turnos",
+            "Suministro Diésel",
+            "Zona Logística",
+            "Modalidad Operador",
+            "Seguro Incluido",
+            "Subtotal Renta Máquinas",
+            "Bonificación Volumen",
+            "Costo Operador",
+            "Suministro Combustible",
+            "Flete Logístico",
+            "Seguro Póliza",
+            "Viáticos",
+            "Subtotal Operativo",
+            "ITBIS",
+            "Total Presupuesto",
+            "Estado de Cotización",
+            "quote_id",
+            "monto_total"
+        ];
+
+        // Optional fields — only sent if they exist in Airtable (add them to this list
+        // after creating the columns in your Airtable table)
+        const OPTIONAL_AIRTABLE_FIELDS = [
+            "RNC Cliente",
+            "Email de Contacto",
+        ];
+
+        const airtableFields = {};
+        // Add mandatory company_id
+        airtableFields.company_id = "MAQ-RENT-001";
+        for (const key of KNOWN_AIRTABLE_FIELDS) {
+            if (validation.data[key] !== undefined) {
+                airtableFields[key] = validation.data[key];
+            }
+        }
+        for (const key of OPTIONAL_AIRTABLE_FIELDS) {
+            if (validation.data[key] !== undefined && validation.data[key] !== '' && validation.data[key] !== '---') {
+                airtableFields[key] = validation.data[key];
+            }
+        }
+
         const AirtableBody = {
-            records: [
-                {
-                    fields: {
-                        ...validation.data,
-                        company_id: payload.company_id,
-                        "pdfBase64": undefined // Don't send this to Airtable
-                    }
-                }
-            ]
+            records: [{ fields: airtableFields }]
         };
 
         const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE}`, {
